@@ -59,7 +59,7 @@ def validate_pix_request(data):
     if not isinstance(data['client'], dict):
         raise ValueError("Campo 'client' deve ser um objeto")
     
-    required_client_fields = ['name', 'email', 'document']
+    required_client_fields = ['name', 'email', 'cpf']
     missing_client_fields = [field for field in required_client_fields if field not in data['client']]
     
     if missing_client_fields:
@@ -133,7 +133,7 @@ def create_pix():
             "name": "João da Silva",
             "email": "joao@example.com",
             "phone": "(11) 99999-9999",
-            "document": "123.456.789-00"
+            "cpf": "123.456.789-00"
         },
         "products": [
             {
@@ -252,7 +252,7 @@ def create_pix_taxa_sedex():
             "name": "João da Silva",
             "email": "joao@example.com",
             "phone": "(11) 99999-9999",
-            "document": "123.456.789-00"
+            "cpf": "123.456.789-00"
         },
         "utm_source": "FB",
         "utm_campaign": "Campanha Black Friday|123456789",
@@ -277,7 +277,7 @@ def create_pix_taxa_sedex():
                 'message': 'Campo "client" é obrigatório e deve ser um objeto'
             }), 400
         
-        required_client_fields = ['name', 'email', 'document']
+        required_client_fields = ['name', 'email', 'cpf']
         missing_client_fields = [field for field in required_client_fields if field not in data['client']]
         
         if missing_client_fields:
@@ -376,7 +376,7 @@ def pix_example():
                     "name": "João da Silva",
                     "email": "joao@example.com",
                     "phone": "(11) 99999-9999",
-                    "document": "123.456.789-00"
+                    "cpf": "123.456.789-00"
                 },
                 "products": [
                     {
@@ -433,7 +433,7 @@ def pix_utm_example():
                     "name": "João da Silva",
                     "email": "joao@example.com",
                     "phone": "(11) 99999-9999",
-                    "document": "44746461856"
+                    "cpf": "44746461856"
                 },
                 "products": [
                     {
@@ -556,7 +556,7 @@ def pix_taxa_sedex_example():
                     "name": "Maria Silva",
                     "email": "maria@email.com", 
                     "phone": "(11) 99999-8888",
-                    "document": "12345678901"
+                    "cpf": "12345678901"
                 },
                 "utm_source": "FB",
                 "utm_campaign": "Taxa Sedex Promo|123456789",
@@ -628,7 +628,7 @@ document.getElementById('checkout-sedex').addEventListener('submit', async (e) =
         name: document.getElementById('name').value,
         email: document.getElementById('email').value,
         phone: document.getElementById('phone').value,
-        document: document.getElementById('document').value
+        cpf: document.getElementById('document').value
     };
     
     try {

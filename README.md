@@ -110,8 +110,66 @@ Cria um novo pagamento PIX.
 }
 ```
 
+### POST /pix/create/taxa-sedex
+Endpoint dedicado para o produto Taxa Sedex (R$ 28,97).
+
+**Body simplificado (dados do cliente + UTM):**
+```json
+{
+  "client": {
+    "name": "Maria Silva",
+    "email": "maria@email.com",
+    "phone": "(11) 99999-8888",
+    "document": "44746461856"
+  },
+  "utm_source": "FB",
+  "utm_campaign": "Taxa Sedex Promo|123456789",
+  "utm_medium": "Interesse Correios|987654321",
+  "utm_content": "Anuncio Sedex Barato|456789123",
+  "utm_term": "feed"
+}
+```
+
+**Características:**
+- ✅ **Valor fixo**: R$ 28,97
+- ✅ **Produto automático**: Taxa Sedex (código: Z29J23C)
+- ✅ **UTM tracking**: Captura parâmetros do Facebook Ads
+- ✅ **Simplificado**: Só precisa dos dados do cliente
+
+**Resposta de sucesso (201):**
+```json
+{
+  "status": "success",
+  "message": "PIX Taxa Sedex criado com sucesso",
+  "product": {
+    "name": "Taxa Sedex",
+    "code": "Z29J23C",
+    "price": 28.97
+  },
+  "data": {
+    "transactionId": "abc123xyz",
+    "status": "PENDING",
+    "pix": {
+      "code": "00020101021126530014BR.GOV.BCB.PIX...",
+      "image": "https://api.gateway.com/pix/qr/..."
+    }
+  },
+  "tracking": {
+    "utm_captured": true,
+    "campaign": "Taxa Sedex Promo|123456789",
+    "source": "FB"
+  }
+}
+```
+
 ### GET /pix/example
 Retorna um exemplo completo de como usar a API.
+
+### GET /pix/example/utm
+Retorna exemplos específicos para tracking UTM do Facebook Ads.
+
+### GET /pix/example/taxa-sedex
+Retorna exemplo específico do endpoint Taxa Sedex com integração JavaScript.
 
 ## 🔧 Campos
 
@@ -154,6 +212,29 @@ curl -X POST http://localhost:5000/pix/create \
 
 # Ver exemplo de uso
 curl http://localhost:5000/pix/example
+
+# Testar endpoint Taxa Sedex
+curl -X POST https://api-pix-duckyfy.onrender.com/pix/create/taxa-sedex \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client": {
+      "name": "Teste Taxa Sedex",
+      "email": "teste@email.com",
+      "phone": "(11) 99999-9999",
+      "document": "44746461856"
+    },
+    "utm_source": "FB",
+    "utm_campaign": "Teste Sedex|123",
+    "utm_medium": "Audiencia|456",
+    "utm_content": "Anuncio|789",
+    "utm_term": "feed"
+  }'
+
+# Ver exemplo Taxa Sedex
+curl https://api-pix-duckyfy.onrender.com/pix/example/taxa-sedex
+
+# Ver exemplos UTM
+curl https://api-pix-duckyfy.onrender.com/pix/example/utm
 ```
 
 ### Usando Python:
@@ -203,7 +284,10 @@ api-pix-duckfy/
 ├── .dockerignore      # Arquivos ignorados pelo Docker
 ├── README.md          # Esta documentação
 ├── DEPLOY_RENDER.md   # Guia de deploy na Render
+├── UTM_TRACKING.md   # Guia de tracking Facebook Ads
+├── API_DOCS.md       # Documentação simplificada
 └── test_api.py        # Testes da API
+└── test_taxa_sedex.py # Teste endpoint Taxa Sedex
 ```
 
 ## 🐳 Deploy com Docker (Recomendado)

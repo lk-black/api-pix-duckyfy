@@ -9,7 +9,7 @@ import json
 from datetime import datetime, timedelta
 
 # URL base da API (ajuste conforme necessário)
-API_BASE_URL = "http://localhost:5000"
+API_BASE_URL = "https://api-pix-duckyfy.onrender.com"
 
 def test_health():
     """Testa se a API está funcionando"""
@@ -161,6 +161,50 @@ def get_example():
         print(f"❌ Erro ao buscar exemplo: {e}")
         return False
 
+def create_taxa_sedex_pix():
+    """Testa o endpoint específico para Taxa Sedex"""
+    print("\n📦 Testando endpoint Taxa Sedex...")
+    
+    data = {
+        "client": {
+            "name": "Cliente Taxa Sedex",
+            "email": "cliente.sedex@exemplo.com",
+            "phone": "(11) 99999-8888",
+            "document": "44746461856"
+        },
+        "utm_source": "FB",
+        "utm_campaign": "Taxa Sedex Promocao|999888777",
+        "utm_medium": "Interesse Entrega|666555444",
+        "utm_content": "Anuncio Sedex Rapido|333222111",
+        "utm_term": "feed"
+    }
+    
+    try:
+        response = requests.post(f"{API_BASE_URL}/pix/create/taxa-sedex", json=data)
+        print(f"Status: {response.status_code}")
+        result = response.json()
+        print(f"Resposta: {json.dumps(result, indent=2, ensure_ascii=False)}")
+        
+        if response.status_code == 201 and 'data' in result:
+            pix_data = result['data']
+            print(f"\n✅ PIX Taxa Sedex criado com sucesso!")
+            print(f"💰 Produto: {result['product']['name']} - R$ {result['product']['price']}")
+            print(f"🔑 Transaction ID: {pix_data.get('transactionId')}")
+            print(f"📊 Status: {pix_data.get('status')}")
+            
+            if 'tracking' in result:
+                print(f"📈 UTM capturado: {result['tracking']['campaign']}")
+                print(f"🎯 Source: {result['tracking']['source']}")
+            
+            if 'pix' in pix_data:
+                print(f"🔗 Código PIX: {pix_data['pix'].get('code')[:50]}...")
+        
+        return response.status_code == 201
+        
+    except Exception as e:
+        print(f"❌ Erro ao criar PIX Taxa Sedex: {e}")
+        return False
+
 def main():
     """Executa todos os testes"""
     print("🚀 Iniciando testes da API PIX Duckfy")
@@ -168,7 +212,7 @@ def main():
     
     # Contador de testes
     tests_passed = 0
-    total_tests = 5
+    total_tests = 6
     
     # Executar testes
     if test_health():
@@ -184,6 +228,9 @@ def main():
         tests_passed += 1
     
     if get_example():
+        tests_passed += 1
+    
+    if create_taxa_sedex_pix():
         tests_passed += 1
     
     # Resultado final
