@@ -1,15 +1,28 @@
 import os
 import uuid
 import requests
+import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from config import config
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
+# Configurar logging para produção
+if os.environ.get('FLASK_ENV') == 'production':
+    logging.basicConfig(level=logging.INFO)
+else:
+    logging.basicConfig(level=logging.DEBUG)
+
 app = Flask(__name__)
+
+# Configurar app baseado no ambiente
+config_name = os.environ.get('FLASK_ENV', 'development')
+app.config.from_object(config.get(config_name, config['default']))
+
 CORS(app)
 
 # Configurações
@@ -66,16 +79,22 @@ def create_pix_payment(pix_data):
     url = f"{DUCKFY_BASE_URL}/gateway/pix/receive"
     
     # Log para debugging
-    print(f"🔗 Fazendo requisição para: {url}")
-    print(f"📤 Dados enviados: {pix_data}")
-    print(f"🔑 Headers: {headers}")
+    if app.config.get('DEBUG'):
+        print(f"🔗 Fazendo requisição para: {url}")
+        print(f"📤 Dados enviados: {pix_data}")
+        print(f"🔑 Headers: {headers}")
+    else:
+        logging.info(f"Creating PIX payment for amount: {pix_data.get('amount')}")
     
     try:
         response = requests.post(url, json=pix_data, headers=headers, timeout=30)
         
-        print(f"📥 Status Code: {response.status_code}")
-        print(f"📥 Response Headers: {dict(response.headers)}")
-        print(f"📥 Response Text: {response.text}")
+        if app.config.get('DEBUG'):
+            print(f"📥 Status Code: {response.status_code}")
+            print(f"📥 Response Headers: {dict(response.headers)}")
+            print(f"📥 Response Text: {response.text}")
+        else:
+            logging.info(f"Duckfy API response status: {response.status_code}")
         
         if response.status_code in [200, 201]:
             return response.json()
@@ -89,7 +108,7 @@ def create_pix_payment(pix_data):
             )
     
     except requests.RequestException as e:
-        print(f"❌ Erro de conexão: {str(e)}")
+        logging.error(f"Connection error with Duckfy API: {str(e)}")
         raise DuckfyAPIError(f"Erro de conexão com a gateway: {str(e)}")
 
 @app.route('/health', methods=['GET'])

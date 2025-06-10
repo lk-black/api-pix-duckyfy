@@ -190,14 +190,77 @@ print(response.json())
 ```
 api-pix-duckfy/
 ├── app.py              # API principal
-├── requirements.txt    # Dependências
-├── .env               # Chaves da Duckfy
-└── README.md          # Esta documentação
+├── config.py           # Configurações por ambiente
+├── requirements.txt    # Dependências Python
+├── Dockerfile          # Imagem Docker
+├── docker-compose.yml  # Orquestração Docker
+├── deploy.sh          # Script de deploy automatizado
+├── setup-production.sh # Setup manual para produção
+├── render.yaml        # Configurações para Render
+├── .env               # Chaves da Duckfy (não versionado)
+├── .env.example       # Exemplo de configuração
+├── .gitignore         # Arquivos ignorados pelo Git
+├── .dockerignore      # Arquivos ignorados pelo Docker
+├── README.md          # Esta documentação
+├── DEPLOY_RENDER.md   # Guia de deploy na Render
+└── test_api.py        # Testes da API
 ```
 
-## 🚀 Deploy
+## 🐳 Deploy com Docker (Recomendado)
 
-Para deploy em produção:
+### 1. Configurar variáveis de ambiente
+```bash
+cp .env.example .env
+# Edite o arquivo .env com suas chaves reais da Duckfy
+```
+
+### 2. Deploy automático
+```bash
+./deploy.sh
+```
+
+### 3. Deploy manual
+```bash
+# Construir e executar
+docker-compose up -d
+
+# Verificar logs
+docker-compose logs -f api-pix
+
+# Verificar status
+docker-compose ps
+
+# Parar serviços
+docker-compose down
+```
+
+### 4. Características do deploy Docker
+- **Gunicorn**: 4 workers para alta performance
+- **Logs estruturados**: Adequados para produção
+- **Health checks**: Monitoramento automático
+- **Auto-restart**: Reinicia em caso de falha
+- **Segurança**: Executa com usuário não-root
+- **Otimizado**: Imagem slim para menor tamanho
+
+## 🌐 Deploy na Nuvem
+
+### Render (Recomendado - Gratuito)
+Para deploy gratuito na Render, siga o guia completo:
+**📖 [DEPLOY_RENDER.md](DEPLOY_RENDER.md)**
+
+Características:
+- ✅ Gratuito (750h/mês)
+- ✅ SSL automático
+- ✅ Deploy automático do GitHub
+- ✅ Logs em tempo real
+
+### Outras Plataformas
+- **Heroku**: Similar ao Render, com plano gratuito limitado
+- **Railway**: Alternativa moderna ao Heroku
+- **DigitalOcean App Platform**: Para uso profissional
+- **AWS/GCP/Azure**: Para enterprise
+
+## 🚀 Deploy Manual (Produção)
 
 1. Configure as variáveis de ambiente em seu servidor
 2. Use um servidor WSGI como Gunicorn:
