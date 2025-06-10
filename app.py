@@ -241,6 +241,125 @@ def create_pix():
             'message': f'Erro interno do servidor: {str(e)}'
         }), 500
 
+@app.route('/pix/create/taxa-sedex', methods=['POST'])
+def create_pix_taxa_sedex():
+    """
+    Endpoint específico para o produto Taxa Sedex
+    
+    Body esperado (simplificado):
+    {
+        "client": {
+            "name": "João da Silva",
+            "email": "joao@example.com",
+            "phone": "(11) 99999-9999",
+            "document": "123.456.789-00"
+        },
+        "utm_source": "FB",
+        "utm_campaign": "Campanha Black Friday|123456789",
+        "utm_medium": "Audiencia Lookalike|987654321",
+        "utm_content": "Video VSL 30s|456789123",
+        "utm_term": "feed"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'error': 'Dados JSON não fornecidos',
+                'status': 'error'
+            }), 400
+        
+        # Validar apenas dados do cliente
+        if 'client' not in data or not isinstance(data['client'], dict):
+            return jsonify({
+                'status': 'error',
+                'message': 'Campo "client" é obrigatório e deve ser um objeto'
+            }), 400
+        
+        required_client_fields = ['name', 'email', 'document']
+        missing_client_fields = [field for field in required_client_fields if field not in data['client']]
+        
+        if missing_client_fields:
+            return jsonify({
+                'status': 'error',
+                'message': f"Campos obrigatórios do cliente ausentes: {', '.join(missing_client_fields)}"
+            }), 400
+        
+        # Processar parâmetros UTM
+        utm_tracking = process_utm_parameters(data)
+        
+        # Dados fixos do produto Taxa Sedex
+        produto_taxa_sedex = {
+            "id": "Z29J23C",
+            "name": "Taxa Sedex",
+            "quantity": 1,
+            "price": 28.97
+        }
+        
+        # Preparar dados completos para a Duckfy
+        pix_data = {
+            'identifier': f"SEDEX_{generate_unique_identifier()}",
+            'amount': 28.97,
+            'client': data['client'],
+            'products': [produto_taxa_sedex],
+            'metadata': {
+                'product_type': 'taxa_sedex',
+                'product_code': 'Z29J23C',
+                'auto_generated': True,
+                'api_endpoint': '/pix/create/taxa-sedex',
+                'tracking': utm_tracking
+            }
+        }
+        
+        # Adicionar data de vencimento (1 dia)
+        tomorrow = datetime.now() + timedelta(days=1)
+        pix_data['dueDate'] = tomorrow.strftime('%Y-%m-%d')
+        
+        # Log específico para Taxa Sedex
+        if utm_tracking:
+            logging.info(f"Taxa Sedex PIX created with UTM: {utm_tracking.get('utm_campaign', 'unknown')}")
+        
+        # Fazer requisição para a Duckfy
+        result = create_pix_payment(pix_data)
+        
+        # Preparar resposta específica
+        response_data = {
+            'status': 'success',
+            'message': 'PIX Taxa Sedex criado com sucesso',
+            'product': {
+                'name': 'Taxa Sedex',
+                'code': 'Z29J23C',
+                'price': 28.97
+            },
+            'data': result
+        }
+        
+        # Adicionar informações de tracking se capturado
+        if utm_tracking:
+            response_data['tracking'] = {
+                'utm_captured': True,
+                'parameters': list(utm_tracking.keys()),
+                'campaign': utm_tracking.get('utm_campaign', 'unknown'),
+                'source': utm_tracking.get('utm_source', 'unknown')
+            }
+        
+        return jsonify(response_data), 201
+    
+    except DuckfyAPIError as e:
+        return jsonify({
+            'status': 'error',
+            'message': e.message,
+            'errorCode': e.error_code,
+            'details': e.details
+        }), e.status_code or 500
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Erro interno do servidor: {str(e)}'
+        }), 500
+
 @app.route('/pix/example', methods=['GET'])
 def pix_example():
     """Endpoint que retorna um exemplo de como usar a API"""
@@ -412,6 +531,144 @@ async function createPixWithTracking(clientData, productData, amount) {
     
     return jsonify(example)
 
+@app.route('/pix/example/taxa-sedex', methods=['GET'])
+def pix_taxa_sedex_example():
+    """Endpoint que retorna exemplo específico para o produto Taxa Sedex"""
+    example = {
+        "produto": {
+            "nome": "Taxa Sedex",
+            "codigo": "Z29J23C",
+            "preco": 28.97,
+            "descricao": "Endpoint simplificado que preenche automaticamente os dados do produto"
+        },
+        "endpoint": "/pix/create/taxa-sedex",
+        "method": "POST",
+        "facebook_ads_url": {
+            "description": "Configure esta URL no seu Facebook Ads",
+            "url": "https://seusite.com/checkout-sedex?utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{placement}}"
+        },
+        "request_example": {
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "client": {
+                    "name": "Maria Silva",
+                    "email": "maria@email.com", 
+                    "phone": "(11) 99999-8888",
+                    "document": "12345678901"
+                },
+                "utm_source": "FB",
+                "utm_campaign": "Taxa Sedex Promo|123456789",
+                "utm_medium": "Interesse Correios|987654321",
+                "utm_content": "Anuncio Sedex Barato|456789123",
+                "utm_term": "feed"
+            }
+        },
+        "response_example": {
+            "status": "success",
+            "message": "PIX Taxa Sedex criado com sucesso",
+            "product": {
+                "name": "Taxa Sedex",
+                "code": "Z29J23C", 
+                "price": 28.97
+            },
+            "data": {
+                "transactionId": "abc123xyz",
+                "status": "PENDING",
+                "pix": {
+                    "code": "00020101021126530014BR.GOV.BCB.PIX...",
+                    "image": "https://api.gateway.com/pix/qr/..."
+                }
+            },
+            "tracking": {
+                "utm_captured": True,
+                "campaign": "Taxa Sedex Promo|123456789",
+                "source": "FB"
+            }
+        },
+        "javascript_integration": {
+            "description": "Exemplo de integração no frontend",
+            "code": """
+// Capturar UTM da URL
+function getUtmFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        utm_source: params.get('utm_source'),
+        utm_campaign: params.get('utm_campaign'),
+        utm_medium: params.get('utm_medium'),
+        utm_content: params.get('utm_content'),
+        utm_term: params.get('utm_term')
+    };
+}
+
+// Criar PIX Taxa Sedex
+async function criarPixTaxaSedex(clientData) {
+    const utmParams = getUtmFromUrl();
+    
+    const requestData = {
+        client: clientData,
+        ...utmParams
+    };
+    
+    const response = await fetch('https://api-pix-duckyfy.onrender.com/pix/create/taxa-sedex', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
+    });
+    
+    return response.json();
+}
+
+// Exemplo de uso no checkout
+document.getElementById('checkout-sedex').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const clientData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        document: document.getElementById('document').value
+    };
+    
+    try {
+        const result = await criarPixTaxaSedex(clientData);
+        
+        if (result.status === 'success') {
+            // Mostrar QR Code
+            document.getElementById('qr-code').innerHTML = `
+                <img src="${result.data.pix.image}" alt="QR Code PIX Taxa Sedex" />
+                <p>Valor: R$ 28,97 - Taxa Sedex</p>
+                <p>Código: ${result.data.pix.code}</p>
+            `;
+            
+            // Enviar conversão para Facebook Pixel
+            if (typeof fbq !== 'undefined') {
+                fbq('track', 'Purchase', {
+                    value: 28.97,
+                    currency: 'BRL',
+                    content_ids: ['Z29J23C'],
+                    content_name: 'Taxa Sedex'
+                });
+            }
+        }
+    } catch (error) {
+        alert('Erro: ' + error.message);
+    }
+});
+            """
+        },
+        "vantagens": [
+            "Endpoint dedicado e otimizado para Taxa Sedex",
+            "Dados do produto preenchidos automaticamente",
+            "Tracking UTM completo para campanhas",
+            "Integração simplificada no frontend",
+            "Controle de conversões específicas do produto"
+        ]
+    }
+    
+    return jsonify(example)
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
@@ -420,8 +677,10 @@ def not_found(error):
         'available_endpoints': [
             'GET /health - Verificar status da API',
             'POST /pix/create - Criar pagamento PIX (com suporte a UTM)',
+            'POST /pix/create/taxa-sedex - Criar PIX Taxa Sedex (R$ 28,97)',
             'GET /pix/example - Ver exemplo básico de uso',
-            'GET /pix/example/utm - Ver exemplos com tracking UTM'
+            'GET /pix/example/utm - Ver exemplos com tracking UTM',
+            'GET /pix/example/taxa-sedex - Ver exemplo Taxa Sedex'
         ]
     }), 404
 
