@@ -2,6 +2,7 @@ import os
 import uuid
 import requests
 import logging
+import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -162,6 +163,9 @@ def create_pix():
         # Validar dados
         validate_pix_request(data)
         
+        # Processar parâmetros UTM do Facebook Ads
+        utm_tracking = process_utm_parameters(data)
+        
         # Preparar dados para a Duckfy
         pix_data = {
             'identifier': data.get('identifier', generate_unique_identifier()),
@@ -170,10 +174,26 @@ def create_pix():
         }
         
         # Campos opcionais
-        optional_fields = ['shippingFee', 'extraFee', 'discount', 'products', 'splits', 'dueDate', 'metadata', 'callbackUrl']
+        optional_fields = ['shippingFee', 'extraFee', 'discount', 'products', 'splits', 'dueDate', 'callbackUrl']
         for field in optional_fields:
             if field in data:
                 pix_data[field] = data[field]
+        
+        # Combinar metadata existente com tracking UTM
+        existing_metadata = data.get('metadata', {})
+        if isinstance(existing_metadata, str):
+            try:
+                existing_metadata = json.loads(existing_metadata)
+            except:
+                existing_metadata = {'original_metadata': existing_metadata}
+        
+        # Criar metadata final com tracking
+        final_metadata = {
+            **existing_metadata,
+            'tracking': utm_tracking
+        }
+        
+        pix_data['metadata'] = final_metadata
         
         # Se não foi fornecida uma data de vencimento, usar 1 dia a partir de hoje
         if 'dueDate' not in pix_data:
@@ -183,11 +203,23 @@ def create_pix():
         # Fazer requisição para a Duckfy
         result = create_pix_payment(pix_data)
         
-        return jsonify({
+        # Preparar resposta com informações de tracking
+        response_data = {
             'status': 'success',
             'message': 'PIX criado com sucesso',
             'data': result
-        }), 201
+        }
+        
+        # Adicionar informações de tracking se capturado
+        if utm_tracking:
+            response_data['tracking'] = {
+                'utm_captured': True,
+                'parameters': list(utm_tracking.keys()),
+                'campaign': utm_tracking.get('utm_campaign', 'unknown'),
+                'source': utm_tracking.get('utm_source', 'unknown')
+            }
+        
+        return jsonify(response_data), 201
     
     except ValueError as e:
         return jsonify({
@@ -262,6 +294,124 @@ def pix_example():
     
     return jsonify(example)
 
+@app.route('/pix/example/utm', methods=['GET'])
+def pix_utm_example():
+    """Endpoint que retorna exemplos específicos para tracking UTM do Facebook Ads"""
+    example = {
+        "facebook_ads_url_example": {
+            "description": "Configure esta URL no seu Facebook Ads como página de destino",
+            "url": "https://seusite.com/checkout?utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{placement}}"
+        },
+        "api_request_example": {
+            "url": "/pix/create",
+            "method": "POST",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "amount": 197.90,
+                "client": {
+                    "name": "João da Silva",
+                    "email": "joao@example.com",
+                    "phone": "(11) 99999-9999",
+                    "document": "44746461856"
+                },
+                "products": [
+                    {
+                        "id": "curso_001",
+                        "name": "Curso Online",
+                        "quantity": 1,
+                        "price": 197.90
+                    }
+                ],
+                # Parâmetros UTM capturados da URL
+                "utm_source": "FB",
+                "utm_campaign": "Black Friday 2024|123456789",
+                "utm_medium": "Audiencia Lookalike|987654321",
+                "utm_content": "Video VSL 30s|456789123",
+                "utm_term": "feed",
+                "metadata": {
+                    "orderId": "ORDER-12345",
+                    "source": "facebook_ads"
+                }
+            }
+        },
+        "expected_response": {
+            "status": "success",
+            "message": "PIX criado com sucesso",
+            "data": {
+                "transactionId": "abc123xyz",
+                "status": "PENDING",
+                "pix": {
+                    "code": "00020101021126530014BR.GOV.BCB.PIX...",
+                    "image": "https://api.gateway.com/pix/qr/..."
+                }
+            },
+            "tracking": {
+                "utm_captured": True,
+                "parameters": ["utm_source", "utm_campaign", "utm_medium", "utm_content", "utm_term"],
+                "campaign": "Black Friday 2024|123456789",
+                "source": "FB"
+            }
+        },
+        "javascript_integration": {
+            "description": "Exemplo de como capturar UTM da URL e enviar para a API",
+            "code": """
+// Função para capturar parâmetros UTM da URL
+function getUtmFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return {
+        utm_source: urlParams.get('utm_source'),
+        utm_campaign: urlParams.get('utm_campaign'),
+        utm_medium: urlParams.get('utm_medium'),
+        utm_content: urlParams.get('utm_content'),
+        utm_term: urlParams.get('utm_term')
+    };
+}
+
+// Enviar PIX com tracking
+async function createPixWithTracking(clientData, productData, amount) {
+    const utmParams = getUtmFromUrl();
+    
+    const pixData = {
+        amount: amount,
+        client: clientData,
+        products: productData,
+        ...utmParams,  // Adiciona todos os parâmetros UTM
+        metadata: {
+            page_url: window.location.href,
+            timestamp: new Date().toISOString()
+        }
+    };
+    
+    const response = await fetch('https://api-pix-duckyfy.onrender.com/pix/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pixData)
+    });
+    
+    return response.json();
+}
+            """
+        },
+        "utm_parameters_explained": {
+            "utm_source": "FB (Facebook)",
+            "utm_campaign": "{{campaign.name}}|{{campaign.id}} - Nome e ID da campanha",
+            "utm_medium": "{{adset.name}}|{{adset.id}} - Nome e ID do conjunto de anúncios",
+            "utm_content": "{{ad.name}}|{{ad.id}} - Nome e ID do anúncio",
+            "utm_term": "{{placement}} - Posicionamento do anúncio (feed, stories, etc)"
+        },
+        "benefits": [
+            "Rastrear ROI por campanha específica",
+            "Identificar anúncios que mais convertem",
+            "Otimizar conjuntos de anúncios",
+            "Medir performance por posicionamento",
+            "Calcular ROAS real por criativo"
+        ]
+    }
+    
+    return jsonify(example)
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
@@ -269,8 +419,9 @@ def not_found(error):
         'message': 'Endpoint não encontrado',
         'available_endpoints': [
             'GET /health - Verificar status da API',
-            'POST /pix/create - Criar pagamento PIX',
-            'GET /pix/example - Ver exemplo de uso'
+            'POST /pix/create - Criar pagamento PIX (com suporte a UTM)',
+            'GET /pix/example - Ver exemplo básico de uso',
+            'GET /pix/example/utm - Ver exemplos com tracking UTM'
         ]
     }), 404
 
@@ -280,6 +431,24 @@ def internal_error(error):
         'status': 'error',
         'message': 'Erro interno do servidor'
     }), 500
+
+def process_utm_parameters(data):
+    """Processa parâmetros UTM específicos do Facebook Ads"""
+    utm_data = {}
+    
+    # Parâmetros UTM específicos que vamos capturar
+    utm_params = ['utm_source', 'utm_campaign', 'utm_medium', 'utm_content', 'utm_term']
+    
+    for param in utm_params:
+        if param in data and data[param]:
+            utm_data[param] = str(data[param])[:200]  # Limitar tamanho
+    
+    # Adicionar timestamp de conversão se há dados UTM
+    if utm_data:
+        utm_data['conversion_timestamp'] = datetime.now().isoformat()
+        utm_data['tracking_source'] = 'facebook_ads'
+    
+    return utm_data
 
 if __name__ == '__main__':
     print("🚀 Iniciando API PIX Duckfy...")
