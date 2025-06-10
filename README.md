@@ -1,0 +1,224 @@
+# API PIX Duckfy
+
+Uma API simples para integração com a gateway de pagamentos Duckfy, permitindo criar pagamentos PIX de forma fácil e eficaz.
+
+## 🚀 Instalação e Execução
+
+### 1. Instalar dependências
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Configurar variáveis de ambiente
+As chaves já estão configuradas no arquivo `.env`:
+- `PUBLIC_KEY`: Sua chave pública da Duckfy
+- `SECRET_KEY`: Sua chave secreta da Duckfy
+
+### 3. Executar a API
+```bash
+python app.py
+```
+
+A API estará disponível em: `http://localhost:5000`
+
+## 📚 Endpoints
+
+### GET /health
+Verifica se a API está funcionando.
+
+**Resposta:**
+```json
+{
+  "status": "OK",
+  "message": "API PIX Duckfy funcionando",
+  "timestamp": "2025-06-10T10:30:00"
+}
+```
+
+### POST /pix/create
+Cria um novo pagamento PIX.
+
+**Body obrigatório:**
+```json
+{
+  "amount": 100.50,
+  "client": {
+    "name": "João da Silva",
+    "email": "joao@example.com",
+    "phone": "(11) 99999-9999",
+    "document": "123.456.789-00"
+  }
+}
+```
+
+**Body completo (com campos opcionais):**
+```json
+{
+  "amount": 100.50,
+  "client": {
+    "name": "João da Silva",
+    "email": "joao@example.com",
+    "phone": "(11) 99999-9999",
+    "document": "123.456.789-00"
+  },
+  "products": [
+    {
+      "id": "produto1",
+      "name": "Produto Exemplo",
+      "quantity": 1,
+      "price": 100.50
+    }
+  ],
+  "shippingFee": 0,
+  "extraFee": 0,
+  "discount": 0,
+  "dueDate": "2025-06-11",
+  "metadata": {
+    "orderId": "12345",
+    "source": "website"
+  },
+  "callbackUrl": "https://example.com/callback"
+}
+```
+
+**Resposta de sucesso (201):**
+```json
+{
+  "status": "success",
+  "message": "PIX criado com sucesso",
+  "data": {
+    "transactionId": "clwuwmn4i0007emp9lgn66u1h",
+    "status": "OK",
+    "order": {
+      "id": "cm92389asdaskdjkasjdka",
+      "url": "https://api-de-pagamentos.com/order/cm92389asdaskdjkasjdka"
+    },
+    "pix": {
+      "code": "00020101021126530014BR.GOV.BCB.PIX...",
+      "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQ...",
+      "image": "https://api.gateway.com/pix/qr/..."
+    }
+  }
+}
+```
+
+**Resposta de erro (400):**
+```json
+{
+  "status": "error",
+  "message": "Campos obrigatórios ausentes: amount, client"
+}
+```
+
+### GET /pix/example
+Retorna um exemplo completo de como usar a API.
+
+## 🔧 Campos
+
+### Obrigatórios
+- `amount` (number): Valor da transação em reais
+- `client` (object): Dados do cliente
+  - `name` (string): Nome do cliente
+  - `email` (string): E-mail do cliente
+  - `document` (string): CPF/CNPJ do cliente
+
+### Opcionais
+- `identifier` (string): Identificador único da transação (gerado automaticamente se não fornecido)
+- `shippingFee` (number): Valor do frete
+- `extraFee` (number): Outras taxas
+- `discount` (number): Desconto
+- `products` (array): Lista de produtos
+- `dueDate` (string): Data de vencimento (YYYY-MM-DD, padrão: amanhã)
+- `metadata` (object): Metadados da transação
+- `callbackUrl` (string): URL para notificação de status
+
+## 🧪 Testando a API
+
+### Usando curl:
+```bash
+# Verificar se a API está funcionando
+curl http://localhost:5000/health
+
+# Criar um PIX
+curl -X POST http://localhost:5000/pix/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 50.00,
+    "client": {
+      "name": "Maria Silva",
+      "email": "maria@example.com",
+      "phone": "(11) 98765-4321",
+      "document": "123.456.789-00"
+    }
+  }'
+
+# Ver exemplo de uso
+curl http://localhost:5000/pix/example
+```
+
+### Usando Python:
+```python
+import requests
+
+# Criar PIX
+response = requests.post('http://localhost:5000/pix/create', json={
+    "amount": 75.50,
+    "client": {
+        "name": "Carlos Santos",
+        "email": "carlos@example.com",
+        "phone": "(11) 99999-8888",
+        "document": "987.654.321-00"
+    },
+    "metadata": {
+        "orderId": "ORDER-123",
+        "source": "mobile_app"
+    }
+})
+
+print(response.json())
+```
+
+## 🔐 Segurança
+
+- As chaves de API são carregadas do arquivo `.env`
+- Todas as requisições para a Duckfy incluem autenticação nos headers
+- Validação completa dos dados de entrada
+- Tratamento de erros detalhado
+
+## 📝 Estrutura do Projeto
+
+```
+api-pix-duckfy/
+├── app.py              # API principal
+├── requirements.txt    # Dependências
+├── .env               # Chaves da Duckfy
+└── README.md          # Esta documentação
+```
+
+## 🚀 Deploy
+
+Para deploy em produção:
+
+1. Configure as variáveis de ambiente em seu servidor
+2. Use um servidor WSGI como Gunicorn:
+   ```bash
+   pip install gunicorn
+   gunicorn -w 4 -b 0.0.0.0:5000 app:app
+   ```
+3. Configure um proxy reverso (nginx) se necessário
+
+## 📞 Suporte
+
+Se encontrar algum problema ou tiver dúvidas, verifique:
+1. Se as chaves da Duckfy estão corretas no `.env`
+2. Se todas as dependências estão instaladas
+3. Se os dados enviados estão no formato correto
+
+## 🎯 Próximas Melhorias
+
+- [ ] Adicionar logs estruturados
+- [ ] Implementar cache para consultas
+- [ ] Adicionar testes automatizados
+- [ ] Implementar webhook para receber notificações
+- [ ] Adicionar monitoramento e métricas
+# api-pix-duckyfy
